@@ -1,0 +1,64 @@
+# Makefile
+
+exe := hello.exe
+objects := hello.o random.o
+
+CFLAGS := -Wall -O2
+LDFLAGS := 
+
+protodir := proto
+builddir := build
+
+
+bobjects := $(patsubst %,$(builddir)/%,$(objects))
+depfiles := $(bobjects:.o=.d)
+
+
+
+all: $(exe)
+
+# --- LINKING ---
+
+$(exe): $(bobjects)
+	$(CC) $(LDFLAGS) -o $@ $^
+
+# --- COMPILING ---
+
+$(builddir)/%.o : $(builddir)/%.to
+	@cmp -s $< $@ && echo "$@ is already up to date" || cp $< $@
+
+$(builddir)/%.to : %.c | $(builddir)
+	@$(CC) -MM -MF $(builddir)/$(<:.c=.d) -MG -MT $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+.PRECIOUS: $(builddir)/%.to
+
+# --- AUTO-GENERATED HEADER FILES ---
+
+$(protodir)/%.h : $(builddir)/%.h | $(protodir) $(builddir)
+	@cmp -s $< $@ && echo "$@ is already up to date" || cp $< $@
+
+$(builddir)/%.h : %.c
+	@sed -n -e '/^export/s/export/extern/;s/\s*{.*/;/gp' $< > $@
+
+.PRECIOUS: $(builddir)/%.h
+
+# --- WORKING DIRECTORIES ---
+
+$(protodir):
+	@mkdir -p $@
+$(builddir):
+	@mkdir -p $@
+
+# --- CLEAN ---
+
+clean:
+	@-rm $(exe) $(builddir)/*.o $(builddir)/*.to $(builddir)/*.h $(protodir)/*.h
+
+dist-clean: clean
+	@-rm -r $(builddir) $(protodir)
+
+# Include each of those dependency files; Make will run the rule above
+# to generate each dependency file (if it needs to).
+-include $(depfiles)
+

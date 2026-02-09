@@ -1,0 +1,60 @@
+# Makefile
+.POSIX:
+
+exe ::= main.exe
+objects ::= main.o random.o
+
+CC = gcc
+CFLAGS = -Wall
+
+########################################
+
+# Default target
+all: $(exe)
+
+# Flow of compilation is:
+#   .c -> .o -> .oo
+# though .o and .oo are the same, only the date changes.
+oobjects ::= $(objects:.o=.oo)
+$(exe): $(oobjects)
+	$(CC) -o $@ $^
+
+# Override .c -> .o standard inference rule to generate depfile
+.c.o:
+	$(CC) -MM -MF $*.d -MG $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+
+# .o -> .oo must be specified
+.SUFFIXES: .oo 
+.o.oo:
+	cmp --quiet $< $@ || cp $< $@
+
+# Generated headers follow this flow:
+#   .c -> .tmph -> .h
+# where .tmph and .h are the same except the date
+.SUFFIXES: .tmph .h
+.c.tmph:
+	# replace with a proper mkproto:
+	sed -n -e '/^export/{s/export/extern/;s/\s*{.*/;/;p}' $< > $@
+
+.tmph.h:
+	cmp --quiet $< $@ || cp $< $@
+
+
+
+
+# Each source has its own depfile, which is generated via -MM
+# and included in this Makefile
+depfiles ::= $(objects:.o=.d)
+-include $(depfiles)
+
+# Pretty standard stuff
+clean:
+	for h in *.tmph; do if [ -f $$h ]; then rm -f $$h $${h%.tmph}.h; fi; done
+	-rm --force $(exe) $(objects) $(oobjects) $(depfiles)
+
+
+# GNU Make wants to delete intermediary files if this is not present:
+.SECONDARY: %.o %.h
+
+

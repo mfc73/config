@@ -1,0 +1,43 @@
+# Makefile
+.POSIX:
+
+exe ::= hello.exe
+objects ::= hello.o
+
+CC = gcc
+CFLAGS = -std=c23 -Wall
+
+########################################
+
+# Default target
+all: $(exe)
+
+# Flow of compilation is:
+#   .c -> .o -> .oo
+# though .o and .oo are the same, only the date changes.
+oobjects ::= $(objects:.o=.oo)
+$(exe): $(oobjects)
+	$(CC) -o $@ $^
+
+# .c -> .o is a standard inference rule, no need to specify it
+#.c.o:
+# 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+
+# .o -> .oo must be specified
+.SUFFIXES: .oo 
+.o.oo:
+	cmp --quiet $< $@ || cp $< $@
+
+# Each source has its own depfile, which is generated via -MMD
+# and included in this Makefile
+depfiles ::= $(objects:.o=.d)
+CPPFLAGS += -MMD
+-include $(depfiles)
+
+# Pretty standard stuff
+clean:
+	-rm --force $(exe) $(objects) $(oobjects) $(depfiles)
+
+
+# GNU Make wants to delete intermediary files if this is not present:
+.SECONDARY: %.o

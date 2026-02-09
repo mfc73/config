@@ -1,0 +1,35 @@
+# Makefile
+
+.POSIX:
+
+exe ::= hello.exe
+objects ::= hello.o
+CFLAGS ?= -Wall
+
+oobjects ::= $(objects:.o=.oo)
+depfiles ::= $(objects:.o=.d)
+CFLAGS += -MMD
+#CFLAGS += -MMD -MP
+
+all: $(exe)
+
+$(exe): $(oobjects)
+	$(CC) $(oobjects) -o $@
+
+.o.oo:
+	#if ! cmp $< $@ ; then cp $< $@ ; fi
+	cmp $< $@ || cp $< $@
+
+.PRECIOUS: $(objects)
+
+#.c.o:
+#	$(CC) $(CFLAGS) -c -o $@ $<
+
+clean:
+	-rm $(exe) $(objects) $(oobjects) $(depfiles)
+
+
+# Include each of those dependency files; Make will run the rule above
+# to generate each dependency file (if it needs to).
+-include $(depfiles)
+

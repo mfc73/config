@@ -1,0 +1,45 @@
+# Makefile
+
+exe := hello.exe
+objects := hello.o random.o
+
+oobjects := $(objects:.o=.oo)
+depfiles := $(objects:.o=.d)
+
+CFLAGS := -Wall
+
+
+all: $(exe)
+
+$(exe): $(oobjects)
+	$(CC) -o $@ $^
+
+%.oo : %.o
+	#if cmp $< $@ ; then echo $@ is already up to date ; else cp $< $@ ; fi
+	cmp $< $@ && echo $@ is already up to date || cp $< $@
+
+.PRECIOUS: %.o %.h %.th
+
+%.o : %.c
+	$(CC) -MM -MF $(<:.c=.d) -MG $<
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+#%.d : %.c
+#	$(CC) -MM -MF $@ -MG @<
+
+%.h : %.th
+	cmp $< $@ && echo $@ is already up to date || cp $< $@
+
+%.th : %.c
+	sed -n -e '/^export/s/export/extern/;s/\s*{.*/;/gp' $< > $@
+
+
+clean:
+	-rm $(exe) $(objects) $(oobjects) $(depfiles) *.th
+
+
+
+# Include each of those dependency files; Make will run the rule above
+# to generate each dependency file (if it needs to).
+-include $(depfiles)
+
